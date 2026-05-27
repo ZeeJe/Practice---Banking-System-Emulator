@@ -1,6 +1,6 @@
 ﻿using System;
 using BankingSystem.Domain.Entities;
-using BankingSystem.Domain.Interfaces;
+using BankingSystem.Domain.Factories;
 using BankingSystem.Domain.Services;
 
 class Program
@@ -8,49 +8,63 @@ class Program
     static void Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
-        Console.WriteLine("=== ДОСЛІДЖЕННЯ: ПРИНЦИПИ SOLID (ЛР 9 / СР 9) ===\n");
-
-        // 1. Створюємо інфраструктурні залежності (можемо легко замінити ConsoleLogger на FileLogger)
-        ILogger logger = new ConsoleLogger();
-
-        // 2. Створюємо двох різних клієнтів
-        var standardAccount = new CheckingAccount("Олександр (Стандарт)", 2000m);
-        var vipAccount = new CheckingAccount("Марія (VIP)", 50000m);
+        Console.WriteLine("=== ДОСЛІДЖЕННЯ: ПОРОДЖУВАЛЬНІ ПАТЕРНИ (ЛР 10 / СР 10) ===\n");
 
         // =======================================================
-        // ТЕСТ 1: Клієнт зі стандартною комісією
+        // ПРАКТИЧНА 10: Singleton
         // =======================================================
-        Console.WriteLine("--- 1. Обробка зі стандартною стратегією (1% комісії) ---");
-        ITransactionFeeStrategy standardStrategy = new StandardFeeStrategy();
+        Console.WriteLine("--- 1. Тестування патерну Singleton ---");
         
-        // Впроваджуємо залежності (DIP)
-        var standardProcessor = new TransactionProcessor(logger, standardStrategy);
+        var bank1 = CentralBank.Instance;
+        Console.WriteLine($"Змінна bank1: {bank1.BankName}, Базова ставка: {bank1.BaseInterestRate}%");
         
-        // Знімаємо 1000 UAH (має зняти 1000 + 10 UAH комісії)
-        standardProcessor.ProcessWithdrawal(standardAccount, 1000m);
-
-        Console.WriteLine();
-
-        // =======================================================
-        // ТЕСТ 2: Клієнт із VIP комісією
-        // =======================================================
-        Console.WriteLine("--- 2. Обробка з VIP стратегією (0% комісії) ---");
-        ITransactionFeeStrategy vipStrategy = new VipFeeStrategy();
+        var bank2 = CentralBank.Instance;
+        // Змінюємо ставку через другу змінну
+        bank2.UpdateInterestRate(15.0m); 
         
-        // LSP: Ми підмінили стратегію, і TransactionProcessor продовжує працювати без змін коду!
-        var vipProcessor = new TransactionProcessor(logger, vipStrategy);
+        Console.WriteLine($"Змінна bank1 (після оновлення через bank2): {bank1.BaseInterestRate}%");
         
-        // Знімаємо 5000 UAH (без комісії)
-        vipProcessor.ProcessWithdrawal(vipAccount, 5000m);
-
-        Console.WriteLine();
+        // Перевіряємо, чи це дійсно одне й те саме місце в пам'яті
+        bool isSameInstance = ReferenceEquals(bank1, bank2);
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine($"Чи bank1 і bank2 - це один і той самий об'єкт в пам'яті? {isSameInstance}\n");
+        Console.ResetColor();
 
         // =======================================================
-        // ТЕСТ 3: Перевірка захисту (LSP + Exception Handling)
+        // САМОСТІЙНА 10: Factory Method
         // =======================================================
-        Console.WriteLine("--- 3. Перевірка відмови транзакції (Брак коштів) ---");
-        // Намагаємося зняти більше, ніж є
-        standardProcessor.ProcessWithdrawal(standardAccount, 5000m);
+        Console.WriteLine("--- 2. Тестування Factory Method (Динамічне створення) ---");
+        
+        // Імітуємо конфігурацію, яку програма отримала з JSON файлу або CLI
+        string[] configParams = { "checking", "deposit", "crypto_wallet" };
+
+        foreach (var type in configParams)
+        {
+            try
+            {
+                Console.WriteLine($"[Config Parser] Запит на створення типу: '{type}'...");
+                
+                // Фабрика створює об'єкт, ми навіть не викликаємо 'new' безпосередньо!
+                Account newAccount = AccountFactory.CreateAccount(type, "Ілон Маск", 1000m);
+                
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"-> Успіх! Створено {newAccount.GetType().Name} для {newAccount.OwnerName}.");
+                
+                // Якщо це депозит, перевіримо, чи підтягнулась ставка з Singleton
+                if (newAccount is Deposit dep)
+                {
+                    Console.WriteLine($"   Ставка депозиту (із Singleton): {dep.GetAccountDetails()}");
+                }
+                Console.ResetColor();
+                Console.WriteLine();
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"-> {ex.Message}\n");
+                Console.ResetColor();
+            }
+        }
 
         Console.ReadLine();
     }

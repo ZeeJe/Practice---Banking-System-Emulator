@@ -1,70 +1,79 @@
 ﻿using System;
-using BankingSystem.Domain.Entities;
-using BankingSystem.Domain.Factories;
-using BankingSystem.Domain.Services;
+using BankingSystem.Domain.Events;
+using BankingSystem.Domain.Strategies;
+
+// Контекстний клас, який об'єднує Strategy та Observer
+public class TransferService
+{
+    private ITransferStrategy _strategy;
+
+    // Оголошення події на основі стандартного делегата EventHandler<T>
+    public event EventHandler<TransactionEventArgs> OnTransferCompleted;
+
+    public TransferService(ITransferStrategy initialStrategy)
+    {
+        _strategy = initialStrategy;
+    }
+
+    // Зміна алгоритму "на льоту" (Strategy)
+    public void SetStrategy(ITransferStrategy newStrategy)
+    {
+        _strategy = newStrategy;
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine($"\n[Система]: Алгоритм переказу змінено на '{_strategy.GetTransferType()}'");
+        Console.ResetColor();
+    }
+
+    public void ExecuteTransfer(string from, string to, decimal amount)
+    {
+        decimal fee = _strategy.CalculateFee(amount);
+        
+        Console.WriteLine($"\n--- Виконується {_strategy.GetTransferType()} на {amount} UAH ---");
+        
+        // Тут могла б бути логіка зміни балансу...
+
+        // Публікація події (Observer)
+        // Використовуємо ?.Invoke для безпечного виклику (якщо підписників немає - помилки не буде)
+        OnTransferCompleted?.Invoke(this, new TransactionEventArgs(from, to, amount, fee));
+    }
+}
 
 class Program
 {
     static void Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
-        Console.WriteLine("=== ДОСЛІДЖЕННЯ: ПОРОДЖУВАЛЬНІ ПАТЕРНИ (ЛР 10 / СР 10) ===\n");
+        Console.WriteLine("=== ДОСЛІДЖЕННЯ: ПОВЕДІНКОВІ ПАТЕРНИ ТА ПОДІЇ (ЛР 11 / СР 11) ===\n");
 
-        // =======================================================
-        // ПРАКТИЧНА 10: Singleton
-        // =======================================================
-        Console.WriteLine("--- 1. Тестування патерну Singleton ---");
-        
-        var bank1 = CentralBank.Instance;
-        Console.WriteLine($"Змінна bank1: {bank1.BankName}, Базова ставка: {bank1.BaseInterestRate}%");
-        
-        var bank2 = CentralBank.Instance;
-        // Змінюємо ставку через другу змінну
-        bank2.UpdateInterestRate(15.0m); 
-        
-        Console.WriteLine($"Змінна bank1 (після оновлення через bank2): {bank1.BaseInterestRate}%");
-        
-        // Перевіряємо, чи це дійсно одне й те саме місце в пам'яті
-        bool isSameInstance = ReferenceEquals(bank1, bank2);
-        Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine($"Чи bank1 і bank2 - це один і той самий об'єкт в пам'яті? {isSameInstance}\n");
+        // Ініціалізуємо сервіс із початковою стратегією (Внутрішній переказ)
+        var transferService = new TransferService(new LocalTransferStrategy());
+
+        // Створюємо наших підписників
+        var auditLogger = new AuditLogger();
+        var smsNotifier = new UserNotifier();
+
+        // 1. ПІДПИСКА НА ПОДІЇ (Observer)
+        transferService.OnTransferCompleted += auditLogger.LogTransaction;
+        transferService.OnTransferCompleted += smsNotifier.SendSmsAlert;
+
+        // Транзакція 1: Відпрацюють обидва підписники + локальна стратегія (0 комісії)
+        transferService.ExecuteTransfer("UA111", "UA222", 1000m);
+
+        // 2. ЗМІНА АЛГОРИТМУ НА ЛЬОТУ (Strategy)
+        // Міняємо на SWIFT. Код TransferService при цьому не змінюється!
+        transferService.SetStrategy(new SwiftTransferStrategy());
+        transferService.ExecuteTransfer("UA111", "US999", 2000m);
+
+        // 3. ВІДПИСКА ВІД ПОДІЙ (Запобігання Memory Leak)
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine("\n[Система]: Клієнт відключив SMS-сповіщення (Відписка від події -=)");
         Console.ResetColor();
-
-        // =======================================================
-        // САМОСТІЙНА 10: Factory Method
-        // =======================================================
-        Console.WriteLine("--- 2. Тестування Factory Method (Динамічне створення) ---");
         
-        // Імітуємо конфігурацію, яку програма отримала з JSON файлу або CLI
-        string[] configParams = { "checking", "deposit", "crypto_wallet" };
+        // Відписуємось, щоб Garbage Collector міг безпечно видалити об'єкт, якщо він більше не потрібен
+        transferService.OnTransferCompleted -= smsNotifier.SendSmsAlert;
 
-        foreach (var type in configParams)
-        {
-            try
-            {
-                Console.WriteLine($"[Config Parser] Запит на створення типу: '{type}'...");
-                
-                // Фабрика створює об'єкт, ми навіть не викликаємо 'new' безпосередньо!
-                Account newAccount = AccountFactory.CreateAccount(type, "Ілон Маск", 1000m);
-                
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"-> Успіх! Створено {newAccount.GetType().Name} для {newAccount.OwnerName}.");
-                
-                // Якщо це депозит, перевіримо, чи підтягнулась ставка з Singleton
-                if (newAccount is Deposit dep)
-                {
-                    Console.WriteLine($"   Ставка депозиту (із Singleton): {dep.GetAccountDetails()}");
-                }
-                Console.ResetColor();
-                Console.WriteLine();
-            }
-            catch (Exception ex)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"-> {ex.Message}\n");
-                Console.ResetColor();
-            }
-        }
+        // Транзакція 3: Тепер SMS не прийде, спрацює тільки AuditLogger
+        transferService.ExecuteTransfer("UA111", "US888", 5000m);
 
         Console.ReadLine();
     }

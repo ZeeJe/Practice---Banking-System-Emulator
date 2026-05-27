@@ -7,14 +7,14 @@ namespace BankingSystem.Domain.Entities
     {
         private bool _disposed = false;
         
-        // Приватні поля для інкапсуляції та захисту інваріантів
+        // Приватні поля для інкапсуляції (Лабораторна 2)
         private decimal _balance;
-        private string _ownerName;
+        private string _ownerName = "Unknown";
         private readonly List<Transaction> _transactions = new List<Transaction>();
 
         public string AccountNumber { get; private set; }
 
-        // Властивість із валідацією (Інкапсуляція)
+        // Властивість із валідацією стану (Лабораторна 2)
         public string OwnerName
         {
             get => _ownerName;
@@ -26,7 +26,7 @@ namespace BankingSystem.Domain.Entities
             }
         }
 
-        // Баланс можна змінювати лише через спеціальні методи або оператори
+        // Баланс із захистом від прямого редагування (Лабораторна 2)
         public decimal Balance
         {
             get => _balance;
@@ -38,7 +38,7 @@ namespace BankingSystem.Domain.Entities
             }
         }
 
-        // Індексатор для агрегації транзакцій (Вимога СР 2)
+        // Індексатор для доступу до історії транзакцій (Самостійна 2)
         public Transaction this[int index]
         {
             get
@@ -49,33 +49,42 @@ namespace BankingSystem.Domain.Entities
             }
         }
 
-        // Кількість транзакцій для зручності перевірки
         public int TransactionsCount => _transactions.Count;
 
-        // Конструктори (збережені з першого заняття)
+        // =========================================================
+        // КОНСТРУКТОРІВ ТА ЖИТТЄВИЙ ЦИКЛ (Лабораторна 1 / СР 1)
+        // =========================================================
+
+        // 1. Основний конструктор
         public Account()
         {
             AccountNumber = "UA" + Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
             _balance = 0.0m;
-            _ownerName = "Unknown";
         }
 
+        // 2. Конструктор з параметрами
         public Account(string ownerName, decimal initialBalance) : this()
         {
-            OwnerName = ownerName; // Спрацює валідація сетера
-            Balance = initialBalance; // Спрацює валідація сетера
+            OwnerName = ownerName; 
+            Balance = initialBalance; 
         }
 
+        // 3. Копіювальний конструктор (Виправлено warning про null)
         public Account(Account other)
         {
             if (other is null) throw new ArgumentNullException(nameof(other));
+            
             AccountNumber = other.AccountNumber + "-COPY";
             _balance = other._balance;
             _ownerName = other._ownerName;
         }
 
-        // Бізнес-методи, що гарантують консистентність даних
-        public void DepositMoney(decimal amount)
+        // =========================================================
+        // МЕТОДИ БІЗНЕС-ЛОГІКИ ТА ПОЛІМОРФІЗМУ (Лабораторна 3)
+        // =========================================================
+
+        // Зроблено virtual, щоб дочірні класи (наприклад, Deposit) могли змінювати поведінку
+        public virtual void DepositMoney(decimal amount)
         {
             if (amount <= 0) 
                 throw new ArgumentException("Сума поповнення має бути більшою за нуль!");
@@ -84,46 +93,50 @@ namespace BankingSystem.Domain.Entities
             _transactions.Add(new Transaction(amount, "Deposit"));
         }
 
-        public void WithdrawMoney(decimal amount)
+        public virtual void WithdrawMoney(decimal amount)
         {
             if (amount <= 0) 
                 throw new ArgumentException("Сума зняття має бути більшою за нуль!");
             
-            Balance -= amount; // Перевірка на від'ємний баланс виконається всередині властивості Balance
+            Balance -= amount; 
             _transactions.Add(new Transaction(amount, "Withdraw"));
         }
 
+        // Метод для дослідження override (Самостійна 3)
+        public virtual string GetAccountDetails() => $"[Базовий рахунок] № {AccountNumber}";
+
+        // Метод для дослідження приховування new (Самостійна 3)
+        public string GetTerms() => $"[Базові умови] Зняття коштів можливе в будь-який момент.";
+
         // =========================================================
-        // ПЕРЕВАНТАЖЕННЯ ОПЕРАТОРІВ (Вимога СР 2)
+        // ПЕРЕВАНТАЖЕННЯ ОПЕРАТОРІВ (Самостійна 2)
         // =========================================================
 
-        // Оператор + дозволяє поповнювати рахунок прямо кодом: account + 500
         public static Account operator +(Account account, decimal amount)
         {
             account.DepositMoney(amount);
             return account;
         }
 
-        // Оператор - дозволяє знімати кошти прямо кодом: account - 200
         public static Account operator -(Account account, decimal amount)
         {
             account.WithdrawMoney(amount);
             return account;
         }
 
-        // Оператори порівняння рахунків за їхнім номером
-        public static bool operator ==(Account left, Account right)
+        public static bool operator ==(Account? left, Account? right)
         {
             if (ReferenceEquals(left, right)) return true;
             if (left is null || right is null) return false;
             return left.AccountNumber == right.AccountNumber;
         }
 
-        public static bool operator !=(Account left, Account right)
+        public static bool operator !=(Account? left, Account? right)
         {
             return !(left == right);
         }
 
+        // Виправлено warning CS8765 за допомогою object?
         public override bool Equals(object? obj)
         {
             return obj is Account account && this == account;
@@ -134,7 +147,10 @@ namespace BankingSystem.Domain.Entities
             return AccountNumber.GetHashCode();
         }
 
-        // Реалізація IDisposable (збережено)
+        // =========================================================
+        // ОЧИЩЕННЯ РЕСУРСІВ (IDisposable / Деструктор) (СР 1)
+        // =========================================================
+
         public void Dispose()
         {
             Dispose(true);
@@ -145,9 +161,17 @@ namespace BankingSystem.Domain.Entities
         {
             if (!_disposed)
             {
-                if (disposing) { }
+                if (disposing) 
+                {
+                    // Очищення керованих ресурсів (якщо будуть у майбутньому)
+                }
                 _disposed = true;
             }
+        }
+
+        ~Account()
+        {
+            Dispose(false);
         }
     }
 }

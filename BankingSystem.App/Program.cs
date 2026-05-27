@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using BankingSystem.Domain.Entities;
+using BankingSystem.Domain.Repositories;
 using BankingSystem.Domain.Services;
 
 class Program
@@ -7,21 +9,49 @@ class Program
     static void Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
-        Console.WriteLine("=== ДОСЛІДЖЕННЯ: АБСТРАКТНІ КЛАСИ ТА ІНТЕРФЕЙСИ ===\n");
+        Console.WriteLine("=== ДОСЛІДЖЕННЯ: GENERICS ТА ФУНКЦІОНАЛЬНІ ДЕЛЕГАТИ ===\n");
 
-        // 1. Створюємо конкретний рахунок (бо Account тепер абстрактний і його створити не можна)
-        CheckingAccount myAccount = new CheckingAccount("Олександр", 1000.00m);
-        Console.WriteLine(myAccount.GetAccountDetails());
+        // 1. Ініціалізація узагальненого репозиторію для типів Account
+        AccountRepository<Account> bankStorage = new AccountRepository<Account>();
 
-        // 2. Підключаємо першу імплементацію інтерфейсу (SMS)
-        Console.WriteLine("\n--- Підключення SMS-сповіщень ---");
-        myAccount.Notifier = new SmsNotificationService();
-        myAccount.DepositMoney(500.00m);
+        // Створюємо різні типи рахунків
+        var checking = new CheckingAccount("Олександр", 2500.00m);
+        var deposit = new Deposit("Марія", 10000.00m, DateTime.Now.AddYears(1), 16.5m);
 
-        // 3. ПІДМІНА КОМПОНЕНТА (Вимога СР 4) - Змінюємо SMS на Email на льоту!
-        Console.WriteLine("\n--- Підміна компонента: перемикаємо на Email-сповіщення ---");
-        myAccount.Notifier = new EmailNotificationService();
-        myAccount.WithdrawMoney(300.00m);
+        bankStorage.Add(checking);
+        bankStorage.Add(deposit);
+
+        // ----------------------------------------------------
+        // ТЕСТ 1: ForEach (Делегат Action)
+        // ----------------------------------------------------
+        Console.WriteLine("--- 1. Демонстрація роботи ForEach (Друк деталей усіх рахунків) ---");
+        // Передаємо лямбду, яка підходить під Action<Account>
+        bankStorage.ForEach(acc => Console.WriteLine(acc.GetAccountDetails()));
+        Console.WriteLine();
+
+        // ----------------------------------------------------
+        // ТЕСТ 2: Map (Делегат Func<T, TResult>)
+        // ----------------------------------------------------
+        Console.WriteLine("--- 2. Демонстрація роботи Map (Трансформація: витягуємо лише номери рахунків) ---");
+        // Трансформуємо список об'єктів Account у список строк string
+        List<string> accountNumbers = bankStorage.Map(acc => acc.AccountNumber);
+        
+        foreach (var num in accountNumbers)
+        {
+            Console.WriteLine($"Знайдено номер рахунку: {num}");
+        }
+        Console.WriteLine();
+
+        // ----------------------------------------------------
+        // ТЕСТ 3: Reduce (Делегат Func<TAccumulate, T, TAccumulate>)
+        // ----------------------------------------------------
+        Console.WriteLine("--- 3. Демонстрація роботи Reduce (Агрегація: підрахунок загального капіталу банку) ---");
+        // Рахуємо суму балансів усіх рахунків, стартуючи з 0.0m
+        decimal totalLiquidity = bankStorage.Reduce(0.0m, (currentSum, acc) => currentSum + acc.Balance);
+        
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"Успішно агреговано! Загальний баланс усіх рахунків у банку: {totalLiquidity:N2} UAH");
+        Console.ResetColor();
 
         Console.ReadLine();
     }

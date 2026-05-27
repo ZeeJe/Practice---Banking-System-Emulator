@@ -6,17 +6,39 @@ class Program
     static void Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
-        Console.WriteLine("=== ДЕМОНСТРАЦІЯ ЖИТТЄВОГО ЦИКЛУ ОБ'ЄКТА ===\n");
+        Console.WriteLine("=== ДЕМОНСТРАЦІЯ ІНКАПСУЛЯЦІЇ ТА АГРЕГАЦІЇ ===\n");
 
-        // 1. Створення через конструктор з параметрами всередині using (Dispose викличеться автоматично)
-        using (Account acc1 = new Account("Іван Іваненко", 1500.00m))
+        try
         {
-            // 2. Створення копії через копіювальний конструктор
-            Account accCopy = new Account(acc1);
-            Console.WriteLine($"Копія має баланс: {accCopy.Balance}");
-        } // Тут для acc1 автоматично спрацює Dispose()
+            // 1. Створення рахунку
+            Account myAccount = new Account("Олександр", 1000.00m);
+            Console.WriteLine($"Рахунок створено. Власник: {myAccount.OwnerName}, Баланс: {myAccount.Balance} UAH");
 
-        Console.WriteLine("\nБлок using завершився.");
+            // 2. Тест перевантаження операторів (+ та -)
+            Console.WriteLine("\n--- Тестування операторів + та - ---");
+            myAccount = myAccount + 500.00m; // Використання оператора +
+            Console.WriteLine($"Після поповнення (+ 500): {myAccount.Balance} UAH");
+
+            myAccount = myAccount - 300.00m; // Використання оператора -
+            Console.WriteLine($"Після зняття (- 300): {myAccount.Balance} UAH");
+
+            // 3. Тест індексатора (Перегляд історії транзакцій)
+            Console.WriteLine("\n--- Тестування індексатора (Історія транзакцій) ---");
+            Console.WriteLine($"Всього транзакцій: {myAccount.TransactionsCount}");
+            Console.WriteLine($"Перша транзакція через індексатор [0]: {myAccount[0]}");
+            Console.WriteLine($"Друга транзакція через індексатор [1]: {myAccount[1]}");
+
+            // 4. Тест валідації інваріантів (Захист даних від зламу)
+            Console.WriteLine("\n--- Тестування захисту інкапсуляції (Спроба зняти забагато) ---");
+            myAccount = myAccount - 2000.00m; // Очікуємо помилку, бо баланс стане менше 0
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"[Помилка валідації]: {ex.Message}");
+            Console.ResetColor();
+        }
+
         Console.ReadLine();
     }
 }

@@ -1,94 +1,94 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Linq;
 using BankingSystem.Domain.Entities;
+using BankingSystem.Domain.Extensions;
 
 class Program
 {
     static void Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
-        Console.WriteLine("=== ДОСЛІДЖЕННЯ: КОЛЕКЦІЇ .NET ТА ОПТИМІЗАЦІЯ (ЛР 6 / СР 6) ===\n");
+        Console.WriteLine("=== ДОСЛІДЖЕННЯ: LINQ ТА МЕТОДИ РОЗШИРЕННЯ (ЛР 7 / СР 7) ===\n");
 
-        int itemsCount = 50000;
-        Console.WriteLine($"Генеруємо {itemsCount} тестових рахунків для перевірки швидкодії...\n");
-
-        // Генеруємо масив даних заздалегідь, щоб не враховувати час їх створення у тестах
-        var dummyAccounts = new Account[itemsCount];
-        for (int i = 0; i < itemsCount; i++)
+        // 1. Підготовка даних (рахунки банку)
+        var accounts = new List<Account>
         {
-            // Використовуємо CheckingAccount, оскільки базовий Account - абстрактний
-            dummyAccounts[i] = new CheckingAccount($"Клієнт {i}", 100m);
+            new CheckingAccount("Олександр", 1500m),
+            new CheckingAccount("Марія", 8000m),
+            new Deposit("Олександр", 20000m, DateTime.Now.AddYears(1), 15m),
+            new Deposit("Іван", 300m, DateTime.Now.AddMonths(6), 10m)
+        };
+
+        // Імітація зовнішньої бази даних клієнтів (для демонстрації Join)
+        var customersInfo = new List<dynamic> 
+        { 
+            new { Name = "Олександр", City = "Київ" },
+            new { Name = "Марія", City = "Львів" },
+            new { Name = "Іван", City = "Одеса" }
+        };
+
+        // =======================================================
+        // ПРАКТИЧНА 7: Method Syntax vs Query Syntax
+        // =======================================================
+        Console.WriteLine("--- 1. Фільтрація та Проєкція (Select & Where) ---");
+        
+        // Method Syntax (через крапку і лямбда-вирази)
+        var methodSyntaxResult = accounts
+            .Where(a => a.Balance > 1000)
+            .Select(a => a.OwnerName)
+            .Distinct();
+
+        // Query Syntax (схоже на SQL)
+        var querySyntaxResult = (from a in accounts
+                                 where a.Balance > 1000
+                                 select a.OwnerName).Distinct();
+
+        Console.WriteLine($"Method Syntax (Баланс > 1000): {string.Join(", ", methodSyntaxResult)}");
+        Console.WriteLine($"Query Syntax  (Баланс > 1000): {string.Join(", ", querySyntaxResult)}\n");
+
+
+        // =======================================================
+        // САМОСТІЙНА 7: Складні запити (GroupBy, Join)
+        // =======================================================
+        Console.WriteLine("--- 2. Складні запити (GroupBy та Join) ---");
+
+        // GroupBy: Групуємо рахунки за їх типом (Deposit або CheckingAccount)
+        var groupedByType = accounts.GroupBy(a => a.GetType().Name);
+        Console.WriteLine("[GroupBy Результат]:");
+        foreach (var group in groupedByType)
+        {
+            Console.WriteLine($"Тип рахунку: {group.Key} | Кількість: {group.Count()} шт.");
         }
 
-        // Обираємо рахунок десь із середини списку для тестування пошуку
-        Account targetAccount = dummyAccounts[itemsCount / 2]; 
-        string targetId = targetAccount.AccountNumber;
+        // Join: Об'єднуємо список рахунків зі списком міст за ім'ям власника
+        var joinedData = accounts.Join(
+            customersInfo,
+            acc => acc.OwnerName,   // Ключ з колекції рахунків
+            cust => cust.Name,      // Ключ з колекції клієнтів
+            (acc, cust) => new { acc.OwnerName, acc.Balance, cust.City } // Проєкція результату
+        );
+        
+        Console.WriteLine("\n[Join Результат (Рахунки + Міста)]:");
+        foreach (var item in joinedData)
+        {
+            Console.WriteLine($"{item.OwnerName} (м. {item.City}) має баланс {item.Balance} UAH");
+        }
+
 
         // =======================================================
-        // 1. Тестування List<T>
+        // САМОСТІЙНА 7: Використання методів розширення (Extensions)
         // =======================================================
-        var list = new List<Account>();
-        var sw = Stopwatch.StartNew();
-        for (int i = 0; i < itemsCount; i++) list.Add(dummyAccounts[i]);
-        sw.Stop();
-        long listInsertTime = sw.ElapsedMilliseconds;
+        Console.WriteLine("\n--- 3. Кастомні Extension Methods та Aggregate ---");
+        
+        // Викликаємо наші власні методи так, ніби вони є стандартними методами List
+        var vipAccounts = accounts.GetVipAccounts(5000m);
+        Console.WriteLine($"VIP Клієнти (> 5000 UAH): {string.Join(", ", vipAccounts.Select(a => a.OwnerName).Distinct())}");
 
-        sw.Restart();
-        // Пошук у списку (лінійний O(N))
-        bool listFound = list.Find(a => a.AccountNumber == targetId) != null;
-        sw.Stop();
-        long listSearchTime = sw.ElapsedTicks; // Використовуємо Ticks, бо O(1) мілісекунди будуть 0
-
-        // =======================================================
-        // 2. Тестування Dictionary<TKey, TValue>
-        // =======================================================
-        var dict = new Dictionary<string, Account>();
-        sw.Restart();
-        // Ключ - номер рахунку, Значення - сам рахунок
-        for (int i = 0; i < itemsCount; i++) dict.Add(dummyAccounts[i].AccountNumber, dummyAccounts[i]);
-        sw.Stop();
-        long dictInsertTime = sw.ElapsedMilliseconds;
-
-        sw.Restart();
-        // Пошук у словнику за ключем (хешування O(1))
-        bool dictFound = dict.ContainsKey(targetId);
-        sw.Stop();
-        long dictSearchTime = sw.ElapsedTicks;
-
-        // =======================================================
-        // 3. Тестування HashSet<T>
-        // =======================================================
-        var hashSet = new HashSet<Account>();
-        sw.Restart();
-        for (int i = 0; i < itemsCount; i++) hashSet.Add(dummyAccounts[i]);
-        sw.Stop();
-        long hashSetInsertTime = sw.ElapsedMilliseconds;
-
-        sw.Restart();
-        // Пошук у хеш-множині (хешування O(1))
-        bool hashSetFound = hashSet.Contains(targetAccount);
-        sw.Stop();
-        long hashSetSearchTime = sw.ElapsedTicks;
-
-        // =======================================================
-        // ВИВІД РЕЗУЛЬТАТІВ
-        // =======================================================
-        Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine(new string('-', 65));
-        Console.WriteLine($"{"Структура",-15} | {"Час вставки (мс)",-20} | {"Час пошуку (тіки)",-20}");
-        Console.WriteLine(new string('-', 65));
-        Console.WriteLine($"{"List<T>",-15} | {listInsertTime,-20} | {listSearchTime,-20}");
-        Console.WriteLine($"{"Dictionary",-15} | {dictInsertTime,-20} | {dictSearchTime,-20}");
-        Console.WriteLine($"{"HashSet<T>",-15} | {hashSetInsertTime,-20} | {hashSetSearchTime,-20}");
-        Console.WriteLine(new string('-', 65));
+        decimal totalLiquidity = accounts.CalculateTotalBalance();
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"Загальний капітал банку (через кастомний Aggregate): {totalLiquidity} UAH");
         Console.ResetColor();
-
-        // ОБҐРУНТУВАННЯ (Вимога Практичної 6)
-        Console.WriteLine("\n=== ОБҐРУНТУВАННЯ ТА ВИСНОВКИ ===");
-        Console.WriteLine("1. List<T>: Найшвидший для додавання (в кінець), але найповільніший для пошуку за властивістю (лінійний пошук O(N)). Ідеально для збереження історії транзакцій.");
-        Console.WriteLine("2. Dictionary<K,V>: Найкращий для пошуку за унікальним ключем (O(1)). Витрачає трохи більше часу на вставку через виділення пам'яті під бакети хеш-таблиці. Ідеально для бази рахунків банку.");
-        Console.WriteLine("3. HashSet<T>: Швидкий пошук (O(1)) та 100% гарантія унікальності. Вимагає коректних Equals() та GetHashCode() (які ми реалізували раніше). Ідеально для списку унікальних ID клієнтів.");
 
         Console.ReadLine();
     }

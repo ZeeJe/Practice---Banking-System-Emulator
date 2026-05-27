@@ -1,94 +1,79 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using BankingSystem.Domain.Entities;
-using BankingSystem.Domain.Extensions;
+using BankingSystem.Domain.Exceptions;
+using BankingSystem.Domain.Services;
 
 class Program
 {
     static void Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
-        Console.WriteLine("=== ДОСЛІДЖЕННЯ: LINQ ТА МЕТОДИ РОЗШИРЕННЯ (ЛР 7 / СР 7) ===\n");
+        Console.WriteLine("=== ДОСЛІДЖЕННЯ: ОБРОБКА ВИinternalНЯТКІВ ТА RETRY POLICY (ЛР 8 / СР 8) ===\n");
 
-        // 1. Підготовка даних (рахунки банку)
-        var accounts = new List<Account>
+        var account = new CheckingAccount("Олександр", 1000m);
+
+        // =======================================================
+        // ПРАКТИЧНА 8: Custom Exceptions та try/catch/finally
+        // =======================================================
+        Console.WriteLine("--- 1. Тестування бізнес-винятку InsufficientFundsException ---");
+        try
         {
-            new CheckingAccount("Олександр", 1500m),
-            new CheckingAccount("Марія", 8000m),
-            new Deposit("Олександр", 20000m, DateTime.Now.AddYears(1), 15m),
-            new Deposit("Іван", 300m, DateTime.Now.AddMonths(6), 10m)
-        };
-
-        // Імітація зовнішньої бази даних клієнтів (для демонстрації Join)
-        var customersInfo = new List<dynamic> 
-        { 
-            new { Name = "Олександр", City = "Київ" },
-            new { Name = "Марія", City = "Львів" },
-            new { Name = "Іван", City = "Одеса" }
-        };
-
-        // =======================================================
-        // ПРАКТИЧНА 7: Method Syntax vs Query Syntax
-        // =======================================================
-        Console.WriteLine("--- 1. Фільтрація та Проєкція (Select & Where) ---");
-        
-        // Method Syntax (через крапку і лямбда-вирази)
-        var methodSyntaxResult = accounts
-            .Where(a => a.Balance > 1000)
-            .Select(a => a.OwnerName)
-            .Distinct();
-
-        // Query Syntax (схоже на SQL)
-        var querySyntaxResult = (from a in accounts
-                                 where a.Balance > 1000
-                                 select a.OwnerName).Distinct();
-
-        Console.WriteLine($"Method Syntax (Баланс > 1000): {string.Join(", ", methodSyntaxResult)}");
-        Console.WriteLine($"Query Syntax  (Баланс > 1000): {string.Join(", ", querySyntaxResult)}\n");
-
-
-        // =======================================================
-        // САМОСТІЙНА 7: Складні запити (GroupBy, Join)
-        // =======================================================
-        Console.WriteLine("--- 2. Складні запити (GroupBy та Join) ---");
-
-        // GroupBy: Групуємо рахунки за їх типом (Deposit або CheckingAccount)
-        var groupedByType = accounts.GroupBy(a => a.GetType().Name);
-        Console.WriteLine("[GroupBy Результат]:");
-        foreach (var group in groupedByType)
+            Console.WriteLine($"Поточний баланс рахунку: {account.Balance} UAH.");
+            Console.WriteLine("Спроба зняти 5000 UAH...");
+            
+            if (5000m > account.Balance)
+            {
+                // Кидаємо наш кастомний виняток із передачею контексту помилки
+                throw new InsufficientFundsException("Помилка списання: Недостатньо коштів!", 5000m, account.Balance);
+            }
+            account.WithdrawMoney(5000m);
+        }
+        catch (InsufficientFundsException ex)
         {
-            Console.WriteLine($"Тип рахунку: {group.Key} | Кількість: {group.Count()} шт.");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"[Перехоплено виняток]: {ex.Message}");
+            Console.WriteLine($"Деталі помилки: Запит на {ex.AttemptedAmount} UAH | Доступно лише {ex.CurrentBalance} UAH");
+            Console.ResetColor();
+        }
+        finally
+        {
+            // Гарантоване виконання очищення або закриття сесій
+            Console.WriteLine("[Finally Блок]: Банківську сесію безпечно закрито.");
         }
 
-        // Join: Об'єднуємо список рахунків зі списком міст за ім'ям власника
-        var joinedData = accounts.Join(
-            customersInfo,
-            acc => acc.OwnerName,   // Ключ з колекції рахунків
-            cust => cust.Name,      // Ключ з колекції клієнтів
-            (acc, cust) => new { acc.OwnerName, acc.Balance, cust.City } // Проєкція результату
-        );
-        
-        Console.WriteLine("\n[Join Результат (Рахунки + Міста)]:");
-        foreach (var item in joinedData)
+        Console.WriteLine("\n" + new string('=', 60) + "\n");
+
+        // =======================================================
+        // САМОСТІЙНА 8: Retry Policy з експоненційною затримкою
+        // =======================================================
+        Console.WriteLine("--- 2. Тестування автоматичного відновлення (Retry Policy) ---");
+
+        int simulatedGlitchCounter = 0;
+
+        // Імітуємо хмарний запит до Нацбанку, який перші дві спроби «лежить», а на третю оживає
+        Func<string> syncWithCentralBankServer = () =>
         {
-            Console.WriteLine($"{item.OwnerName} (м. {item.City}) має баланс {item.Balance} UAH");
+            simulatedGlitchCounter++;
+            if (simulatedGlitchCounter < 3)
+            {
+                throw new NetworkGlitchException("Remote server timeout. З'єднання розірвано сервером.");
+            }
+            return "Успіх! Баланси успішно синхронізовано з центральним сервером.";
+        };
+
+        try
+        {
+            // Виконуємо нестабільну операцію через нашу політику повторів
+            string transactionStatus = RetryService.ExecuteWithRetry(syncWithCentralBankServer, maxAttempts: 3, baseDelayMs: 300);
+            
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"\n[Основна програма]: Операція завершилась успіхом -> {transactionStatus}");
+            Console.ResetColor();
         }
-
-
-        // =======================================================
-        // САМОСТІЙНА 7: Використання методів розширення (Extensions)
-        // =======================================================
-        Console.WriteLine("\n--- 3. Кастомні Extension Methods та Aggregate ---");
-        
-        // Викликаємо наші власні методи так, ніби вони є стандартними методами List
-        var vipAccounts = accounts.GetVipAccounts(5000m);
-        Console.WriteLine($"VIP Клієнти (> 5000 UAH): {string.Join(", ", vipAccounts.Select(a => a.OwnerName).Distinct())}");
-
-        decimal totalLiquidity = accounts.CalculateTotalBalance();
-        Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine($"Загальний капітал банку (через кастомний Aggregate): {totalLiquidity} UAH");
-        Console.ResetColor();
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Критична помилка в Main]: Програма не змогла відновитись: {ex.Message}");
+        }
 
         Console.ReadLine();
     }

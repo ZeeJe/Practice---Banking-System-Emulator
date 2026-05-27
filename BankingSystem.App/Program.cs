@@ -1,6 +1,6 @@
 ﻿using System;
 using BankingSystem.Domain.Entities;
-using BankingSystem.Domain.Exceptions;
+using BankingSystem.Domain.Interfaces;
 using BankingSystem.Domain.Services;
 
 class Program
@@ -8,72 +8,49 @@ class Program
     static void Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
-        Console.WriteLine("=== ДОСЛІДЖЕННЯ: ОБРОБКА ВИinternalНЯТКІВ ТА RETRY POLICY (ЛР 8 / СР 8) ===\n");
+        Console.WriteLine("=== ДОСЛІДЖЕННЯ: ПРИНЦИПИ SOLID (ЛР 9 / СР 9) ===\n");
 
-        var account = new CheckingAccount("Олександр", 1000m);
+        // 1. Створюємо інфраструктурні залежності (можемо легко замінити ConsoleLogger на FileLogger)
+        ILogger logger = new ConsoleLogger();
 
-        // =======================================================
-        // ПРАКТИЧНА 8: Custom Exceptions та try/catch/finally
-        // =======================================================
-        Console.WriteLine("--- 1. Тестування бізнес-винятку InsufficientFundsException ---");
-        try
-        {
-            Console.WriteLine($"Поточний баланс рахунку: {account.Balance} UAH.");
-            Console.WriteLine("Спроба зняти 5000 UAH...");
-            
-            if (5000m > account.Balance)
-            {
-                // Кидаємо наш кастомний виняток із передачею контексту помилки
-                throw new InsufficientFundsException("Помилка списання: Недостатньо коштів!", 5000m, account.Balance);
-            }
-            account.WithdrawMoney(5000m);
-        }
-        catch (InsufficientFundsException ex)
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"[Перехоплено виняток]: {ex.Message}");
-            Console.WriteLine($"Деталі помилки: Запит на {ex.AttemptedAmount} UAH | Доступно лише {ex.CurrentBalance} UAH");
-            Console.ResetColor();
-        }
-        finally
-        {
-            // Гарантоване виконання очищення або закриття сесій
-            Console.WriteLine("[Finally Блок]: Банківську сесію безпечно закрито.");
-        }
-
-        Console.WriteLine("\n" + new string('=', 60) + "\n");
+        // 2. Створюємо двох різних клієнтів
+        var standardAccount = new CheckingAccount("Олександр (Стандарт)", 2000m);
+        var vipAccount = new CheckingAccount("Марія (VIP)", 50000m);
 
         // =======================================================
-        // САМОСТІЙНА 8: Retry Policy з експоненційною затримкою
+        // ТЕСТ 1: Клієнт зі стандартною комісією
         // =======================================================
-        Console.WriteLine("--- 2. Тестування автоматичного відновлення (Retry Policy) ---");
+        Console.WriteLine("--- 1. Обробка зі стандартною стратегією (1% комісії) ---");
+        ITransactionFeeStrategy standardStrategy = new StandardFeeStrategy();
+        
+        // Впроваджуємо залежності (DIP)
+        var standardProcessor = new TransactionProcessor(logger, standardStrategy);
+        
+        // Знімаємо 1000 UAH (має зняти 1000 + 10 UAH комісії)
+        standardProcessor.ProcessWithdrawal(standardAccount, 1000m);
 
-        int simulatedGlitchCounter = 0;
+        Console.WriteLine();
 
-        // Імітуємо хмарний запит до Нацбанку, який перші дві спроби «лежить», а на третю оживає
-        Func<string> syncWithCentralBankServer = () =>
-        {
-            simulatedGlitchCounter++;
-            if (simulatedGlitchCounter < 3)
-            {
-                throw new NetworkGlitchException("Remote server timeout. З'єднання розірвано сервером.");
-            }
-            return "Успіх! Баланси успішно синхронізовано з центральним сервером.";
-        };
+        // =======================================================
+        // ТЕСТ 2: Клієнт із VIP комісією
+        // =======================================================
+        Console.WriteLine("--- 2. Обробка з VIP стратегією (0% комісії) ---");
+        ITransactionFeeStrategy vipStrategy = new VipFeeStrategy();
+        
+        // LSP: Ми підмінили стратегію, і TransactionProcessor продовжує працювати без змін коду!
+        var vipProcessor = new TransactionProcessor(logger, vipStrategy);
+        
+        // Знімаємо 5000 UAH (без комісії)
+        vipProcessor.ProcessWithdrawal(vipAccount, 5000m);
 
-        try
-        {
-            // Виконуємо нестабільну операцію через нашу політику повторів
-            string transactionStatus = RetryService.ExecuteWithRetry(syncWithCentralBankServer, maxAttempts: 3, baseDelayMs: 300);
-            
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\n[Основна програма]: Операція завершилась успіхом -> {transactionStatus}");
-            Console.ResetColor();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[Критична помилка в Main]: Програма не змогла відновитись: {ex.Message}");
-        }
+        Console.WriteLine();
+
+        // =======================================================
+        // ТЕСТ 3: Перевірка захисту (LSP + Exception Handling)
+        // =======================================================
+        Console.WriteLine("--- 3. Перевірка відмови транзакції (Брак коштів) ---");
+        // Намагаємося зняти більше, ніж є
+        standardProcessor.ProcessWithdrawal(standardAccount, 5000m);
 
         Console.ReadLine();
     }

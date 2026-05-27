@@ -1,18 +1,21 @@
 using System;
 using System.Collections.Generic;
+using BankingSystem.Domain.Interfaces;
 
 namespace BankingSystem.Domain.Entities
 {
-    public class Account : IDisposable
+    // ПР 4: Клас став абстрактним (забезпечує спільну поведінку для всіх типів рахунків)
+    public abstract class Account : IDisposable
     {
         private bool _disposed = false;
-        
-        // Приватні поля для інкапсуляції (Лабораторна 2)
         private decimal _balance;
         private string _ownerName = "Unknown";
         private readonly List<Transaction> _transactions = new List<Transaction>();
 
         public string AccountNumber { get; private set; }
+        
+        // СР 4: Слабке зв'язування з системою сповіщень через інтерфейс контракту
+        public INotificationService? Notifier { get; set; }
 
         // Властивість із валідацією стану (Лабораторна 2)
         public string OwnerName
@@ -26,7 +29,7 @@ namespace BankingSystem.Domain.Entities
             }
         }
 
-        // Баланс із захистом від прямого редагування (Лабораторна 2)
+        // Баланс із захистом від прямого зовнішнього редагування (Лабораторна 2)
         public decimal Balance
         {
             get => _balance;
@@ -38,7 +41,7 @@ namespace BankingSystem.Domain.Entities
             }
         }
 
-        // Індексатор для доступу до історії транзакцій (Самостійна 2)
+        // Індексатор для доступу до історії транзакцій за індексом (Самостійна 2)
         public Transaction this[int index]
         {
             get
@@ -52,25 +55,23 @@ namespace BankingSystem.Domain.Entities
         public int TransactionsCount => _transactions.Count;
 
         // =========================================================
-        // КОНСТРУКТОРІВ ТА ЖИТТЄВИЙ ЦИКЛ (Лабораторна 1 / СР 1)
+        // КОНСТРУКТОРЫ И ЖИЗНЕННЫЙ ЦИКЛ (Лабораторна 1 / СР 1)
+        // Конструктори абстрактного класу робимо protected
         // =========================================================
 
-        // 1. Основний конструктор
-        public Account()
+        protected Account()
         {
             AccountNumber = "UA" + Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
             _balance = 0.0m;
         }
 
-        // 2. Конструктор з параметрами
-        public Account(string ownerName, decimal initialBalance) : this()
+        protected Account(string ownerName, decimal initialBalance) : this()
         {
             OwnerName = ownerName; 
             Balance = initialBalance; 
         }
 
-        // 3. Копіювальний конструктор (Виправлено warning про null)
-        public Account(Account other)
+        protected Account(Account other)
         {
             if (other is null) throw new ArgumentNullException(nameof(other));
             
@@ -80,10 +81,9 @@ namespace BankingSystem.Domain.Entities
         }
 
         // =========================================================
-        // МЕТОДИ БІЗНЕС-ЛОГІКИ ТА ПОЛІМОРФІЗМУ (Лабораторна 3)
+        // МЕТОДИ БІЗНЕС-ЛОГІКИ ТА ПОЛІМОРФІЗМУ (Лабораторна 3, 4)
         // =========================================================
 
-        // Зроблено virtual, щоб дочірні класи (наприклад, Deposit) могли змінювати поведінку
         public virtual void DepositMoney(decimal amount)
         {
             if (amount <= 0) 
@@ -91,6 +91,9 @@ namespace BankingSystem.Domain.Entities
             
             Balance += amount;
             _transactions.Add(new Transaction(amount, "Deposit"));
+
+            // СР 4: Виклик методу через інтерфейс контракту (якщо підключено)
+            Notifier?.SendNotification($"Рахунок {AccountNumber} поповнено на +{amount} UAH. Баланс: {Balance} UAH.");
         }
 
         public virtual void WithdrawMoney(decimal amount)
@@ -100,12 +103,13 @@ namespace BankingSystem.Domain.Entities
             
             Balance -= amount; 
             _transactions.Add(new Transaction(amount, "Withdraw"));
+
+            // СР 4: Виклик методу через інтерфейс контракту (якщо підключено)
+            Notifier?.SendNotification($"З рахунку {AccountNumber} знято -{amount} UAH. Баланс: {Balance} UAH.");
         }
 
-        // Метод для дослідження override (Самостійна 3)
         public virtual string GetAccountDetails() => $"[Базовий рахунок] № {AccountNumber}";
 
-        // Метод для дослідження приховування new (Самостійна 3)
         public string GetTerms() => $"[Базові умови] Зняття коштів можливе в будь-який момент.";
 
         // =========================================================
@@ -136,7 +140,6 @@ namespace BankingSystem.Domain.Entities
             return !(left == right);
         }
 
-        // Виправлено warning CS8765 за допомогою object?
         public override bool Equals(object? obj)
         {
             return obj is Account account && this == account;
@@ -161,10 +164,7 @@ namespace BankingSystem.Domain.Entities
         {
             if (!_disposed)
             {
-                if (disposing) 
-                {
-                    // Очищення керованих ресурсів (якщо будуть у майбутньому)
-                }
+                if (disposing) { }
                 _disposed = true;
             }
         }

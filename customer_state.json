@@ -1,0 +1,13 @@
+{
+  "FullName": "\u0412\u0456\u0442\u0430\u043B\u0456\u0439 \u0411\u0443\u0442\u0435\u0440\u0456\u043D",
+  "Accounts": [
+    {
+      "AccountId": "UA-CRYPTO-777",
+      "Balance": 540000
+    },
+    {
+      "AccountId": "UA-FIAT-888",
+      "Balance": 12000
+    }
+  ]
+}

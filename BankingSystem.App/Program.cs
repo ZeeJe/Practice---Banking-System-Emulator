@@ -2,12 +2,29 @@
 using System.IO;
 using BankingSystem.Domain.DTOs;
 using BankingSystem.Domain.Services;
+using BankingSystem.App;
 
 class Program
 {
     static void Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
+        
+        // Меню для вибору
+        Console.WriteLine("=== BANKING SYSTEM - Меню ===\n");
+        Console.WriteLine("1. DTO та JSON Серіалізація (ЛР 13)");
+        Console.WriteLine("2. Design Patterns Демонстрація (ПР 16)");
+        Console.WriteLine("Виберіть опцію (1 або 2): ");
+        
+        string? choice = Console.ReadLine();
+        
+        if (choice == "2")
+        {
+            var demoPatterns = new DemoPatterns();
+            demoPatterns.RunInteractiveMenu();
+            return;
+        }
+        
         Console.WriteLine("=== ДОСЛІДЖЕННЯ: ЗБЕРЕЖЕННЯ СТАНУ ТА DTO (ЛР 13 / СР 13) ===\n");
 
         string filePath = "customer_state.json";
@@ -60,7 +77,7 @@ class Program
         }
 
         // Очищаємо за собою сліди (опціонально)
-        if (File.Exists(filePath)) File.Delete(filePath);
+        // if (File.Exists(filePath)) File.Delete(filePath);  // ЗАКОМЕНТОВАНО: Файл залишається для демонстрації
 
         Console.ReadLine();
     }

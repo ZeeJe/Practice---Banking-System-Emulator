@@ -1,6 +1,7 @@
 using System;
 using BankingSystem.Domain.Entities;
 using BankingSystem.Domain.Interfaces;
+using BankingSystem.Domain.Common;
 
 namespace BankingSystem.Domain.Services
 {
@@ -20,23 +21,21 @@ namespace BankingSystem.Domain.Services
     // OCP & LSP: Стандартна комісія (1%).
     public class StandardFeeStrategy : ITransactionFeeStrategy
     {
-        public decimal CalculateFee(decimal amount) => amount * 0.01m;
+        public decimal CalculateFee(decimal amount) => amount * BankConstants.StandardFeeRate;
     }
 
     // OCP & LSP: VIP комісія (0%). Можемо безпечно підміняти стратегії завдяки LSP.
     public class VipFeeStrategy : ITransactionFeeStrategy
     {
-        public decimal CalculateFee(decimal amount) => 0m;
+        public decimal CalculateFee(decimal amount) => amount * BankConstants.VipFeeRate;
     }
 
-    // DIP (Dependency Inversion): TransactionProcessor залежить від АБСТРАКЦІЙ (ILogger, ITransactionFeeStrategy),
-    // а не від конкретних реалізацій (ConsoleLogger чи VipFeeStrategy).
+    // DIP (Dependency Inversion)
     public class TransactionProcessor
     {
         private readonly ILogger _logger;
         private readonly ITransactionFeeStrategy _feeStrategy;
 
-        // Залежності інжектяться через конструктор
         public TransactionProcessor(ILogger logger, ITransactionFeeStrategy feeStrategy)
         {
             _logger = logger;
@@ -50,10 +49,8 @@ namespace BankingSystem.Domain.Services
                 decimal fee = _feeStrategy.CalculateFee(amount);
                 decimal totalDeduction = amount + fee;
 
-                // Виконуємо бізнес-логіку
                 account.WithdrawMoney(totalDeduction);
                 
-                // Делегуємо вивід іншому сервісу
                 _logger.LogInfo($"Успішно знято {amount} UAH (Комісія: {fee} UAH). Залишок на рахунку {account.AccountNumber}: {account.Balance} UAH.");
             }
             catch (Exception ex)

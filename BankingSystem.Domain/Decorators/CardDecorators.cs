@@ -1,4 +1,5 @@
 using System;
+using BankingSystem.Domain.Common;
 
 namespace BankingSystem.Domain.Decorators
 {
@@ -32,7 +33,8 @@ namespace BankingSystem.Domain.Decorators
     {
         public CashbackDecorator(IBankCard card) : base(card) { }
         
-        public override string GetDescription() => base.GetDescription() + " + Кешбек 5%";
+        // Повністю позбулися хардкоду тексту
+        public override string GetDescription() => base.GetDescription() + BankConstants.CashbackSuffix;
     }
 
     // Конкретний декоратор 2: Додає безконтактну оплату

@@ -1,8 +1,8 @@
 using System;
+using BankingSystem.Domain.Common;
 
 namespace BankingSystem.Domain.Services
 {
-    // Дали унікальну назву, щоб не ламати твої Email та Sms сервіси
     public interface IWithdrawalNotificationService
     {
         bool SendSms(string message);
@@ -21,8 +21,9 @@ namespace BankingSystem.Domain.Services
 
         public void Withdraw(decimal amount)
         {
-            if (amount <= 0)
-                throw new ArgumentException("Сума має бути більшою за нуль.");
+            // Перевірка через глобальну константу ліміту
+            if (amount < BankConstants.MinWithdrawalAmount)
+                throw new ArgumentException($"Сума має бути не меншою за {BankConstants.MinWithdrawalAmount} UAH.");
 
             if (amount > Balance)
                 throw new InvalidOperationException("Недостатньо коштів.");

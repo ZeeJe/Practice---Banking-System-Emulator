@@ -1,4 +1,5 @@
 using System;
+using BankingSystem.Domain.Common;
 
 namespace BankingSystem.Domain.Services
 {
@@ -17,7 +18,7 @@ namespace BankingSystem.Domain.Services
         private CentralBank()
         {
             BankName = "Національний Банк (Singleton)";
-            BaseInterestRate = 12.5m; // Базова ставка за замовчуванням
+            BaseInterestRate = BankConstants.DefaultNationalBankRate; // Використовуємо константу
             Console.WriteLine("[Singleton]: Екземпляр CentralBank створено в пам'яті.");
         }
 

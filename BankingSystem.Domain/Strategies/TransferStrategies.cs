@@ -1,4 +1,5 @@
 using System;
+using BankingSystem.Domain.Common;
 
 namespace BankingSystem.Domain.Strategies
 {
@@ -12,14 +13,14 @@ namespace BankingSystem.Domain.Strategies
     // Алгоритм 1: Внутрішній переказ (Без комісії)
     public class LocalTransferStrategy : ITransferStrategy
     {
-        public decimal CalculateFee(decimal amount) => 0m;
+        public decimal CalculateFee(decimal amount) => BankConstants.VipFeeRate;
         public string GetTransferType() => "Внутрішній переказ";
     }
 
     // Алгоритм 2: Міжнародний SWIFT-переказ (5% + 50 UAH фіксовано)
     public class SwiftTransferStrategy : ITransferStrategy
     {
-        public decimal CalculateFee(decimal amount) => (amount * 0.05m) + 50m;
+        public decimal CalculateFee(decimal amount) => (amount * BankConstants.InternationalFeeRate) + BankConstants.InternationalFixedFee;
         public string GetTransferType() => "Міжнародний SWIFT-переказ";
     }
 }

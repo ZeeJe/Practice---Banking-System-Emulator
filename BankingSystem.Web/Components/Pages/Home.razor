@@ -1,0 +1,749 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@inject CustomerService CustomerService
+@inject CentralBank CentralBank
+@using BankingSystem.Domain.Factories
+@using BankingSystem.Domain.Decorators
+@using BankingSystem.Domain.Strategies
+@using BankingSystem.Domain.Composites
+
+<PageTitle>Banking System - Architecture & Dashboard</PageTitle>
+
+<div class="container-fluid py-5 bg-light min-vh-100">
+    <!-- Header -->
+    <div class="row mb-5">
+        <div class="col-md-12">
+            <div class="bg-gradient p-5 rounded shadow-lg text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h1 class="display-4 fw-bold mb-3">
+                    <span class="bi bi-bank2"></span> Banking System Architecture Presentation
+                </h1>
+                <p class="lead mb-0">
+                    Модульний банківський емулятор, розроблений з дотриманням SOLID принципів та GoF паттернів проектування
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================= -->
+    <!-- БЛОК 1: СТАТИСТИКА СИСТЕМИ -->
+    <!-- ================================= -->
+    <div class="row mb-5">
+        <div class="col-md-12 mb-4">
+            <h2 class="display-6 fw-bold">
+                <span class="badge bg-primary">📊 Статистика системи</span>
+            </h2>
+        </div>
+
+        @if (statistics != null)
+        {
+            <!-- Card: Кількість клієнтів -->
+            <div class="col-md-3 mb-4">
+                <div class="card h-100 shadow-sm border-0 text-center">
+                    <div class="card-body">
+                        <div class="display-6 fw-bold text-primary mb-3">
+                            <span class="bi bi-people"></span>
+                        </div>
+                        <h5 class="card-title">Клієнти</h5>
+                        <p class="display-5 fw-bold text-dark">@statistics.CustomersCount</p>
+                        <p class="text-muted small">Активних у системі</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card: Кількість рахунків -->
+            <div class="col-md-3 mb-4">
+                <div class="card h-100 shadow-sm border-0 text-center">
+                    <div class="card-body">
+                        <div class="display-6 fw-bold text-info mb-3">
+                            <span class="bi bi-wallet2"></span>
+                        </div>
+                        <h5 class="card-title">Рахунки</h5>
+                        <p class="display-5 fw-bold text-dark">@statistics.TotalAccounts</p>
+                        <p class="text-muted small">Всього рахунків</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card: Загальний баланс -->
+            <div class="col-md-3 mb-4">
+                <div class="card h-100 shadow-sm border-0 text-center">
+                    <div class="card-body">
+                        <div class="display-6 fw-bold text-success mb-3">
+                            <span class="bi bi-cash-coin"></span>
+                        </div>
+                        <h5 class="card-title">Загальний баланс</h5>
+                        <p class="display-5 fw-bold text-dark">₴ @(statistics.TotalBalance.ToString("N0"))</p>
+                        <p class="text-muted small">UAH</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card: Центральний банк -->
+            <div class="col-md-3 mb-4">
+                <div class="card h-100 shadow-sm border-0 text-center">
+                    <div class="card-body">
+                        <div class="display-6 fw-bold text-warning mb-3">
+                            <span class="bi bi-graph-up"></span>
+                        </div>
+                        <h5 class="card-title">Базова ставка</h5>
+                        <p class="display-5 fw-bold text-dark">@(CentralBank.BaseInterestRate)%</p>
+                        <p class="text-muted small">Від Центробанку</p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- ================================= -->
+    <!-- БЛОК 1.5: ОПЕРАЦІЇ З СИСТЕМОЮ -->
+    <!-- ================================= -->
+    <div class="row mb-5">
+        <div class="col-md-12 mb-4">
+            <h2 class="display-6 fw-bold">
+                <span class="badge bg-warning">⚙️ Операції системи</span>
+            </h2>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <button class="btn btn-success w-100 py-3" data-bs-toggle="modal" data-bs-target="#depositModal">
+                <span class="bi bi-safe"></span><br />
+                Відкрити<br />Депозит
+            </button>
+        </div>
+        <div class="col-md-3 mb-3">
+            <button class="btn btn-primary w-100 py-3" data-bs-toggle="modal" data-bs-target="#loanModal">
+                <span class="bi bi-credit-card"></span><br />
+                Взяти<br />Кредит
+            </button>
+        </div>
+        <div class="col-md-3 mb-3">
+            <button class="btn btn-info w-100 py-3" data-bs-toggle="modal" data-bs-target="#cardModal">
+                <span class="bi bi-credit-card-2-back"></span><br />
+                Оформити<br />Картку
+            </button>
+        </div>
+        <div class="col-md-3 mb-3">
+            <button class="btn btn-warning w-100 py-3" data-bs-toggle="modal" data-bs-target="#transferModal">
+                <span class="bi bi-arrow-left-right"></span><br />
+                Здійснити<br />Трансфер
+            </button>
+        </div>
+    </div>
+
+    <!-- ================================= -->
+    <!-- МОДАЛЬ 1: ДЕПОЗИТ -->
+    <!-- ================================= -->
+    <div class="modal fade" id="depositModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <span class="bi bi-safe"></span> Відкриття депозиту
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Депозит — рахунок з нарахуванням відсотків</strong></p>
+                    <div class="alert alert-info">
+                        <strong>📌 Реалізація:</strong> <code>Entities/Deposit.cs</code> (паттерн <strong>Factory Method</strong>)
+                    </div>
+
+                    <h6>Вхідні дані:</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Власник</label>
+                            <input type="text" class="form-control" value="Іван Петренко" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Сума (₴)</label>
+                            <input type="number" class="form-control" @bind="depositAmount" placeholder="100000" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Період (дні)</label>
+                            <input type="number" class="form-control" @bind="depositDays" placeholder="365" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Базова ставка</label>
+                            <input type="text" class="form-control" value="@(CentralBank.BaseInterestRate)%" readonly />
+                        </div>
+                    </div>
+
+                    <h6>Розрахунок:</h6>
+                    @if (depositAmount > 0)
+                    {
+                        decimal interest = (depositAmount * CentralBank.BaseInterestRate / 100) * (depositDays / 365m);
+                        <div class="alert alert-success">
+                            <strong>Сума на депозит:</strong> ₴@depositAmount.ToString("N0")<br />
+                            <strong>Нараховані відсотки:</strong> ₴@interest.ToString("N2")<br />
+                            <strong>Розмір через @depositDays днів:</strong> ₴@(depositAmount + interest).ToString("N2")
+                        </div>
+                    }
+
+                    <h6>Код (Factory Method):</h6>
+                    <div class="alert alert-light small">
+                        <code>var deposit = AccountFactory.CreateAccount("deposit", "Іван", 100000m);</code>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
+                    <button type="button" class="btn btn-success" data-bs-dismiss="modal">
+                        Відкрити депозит
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================= -->
+    <!-- МОДАЛЬ 2: КРЕДИТ -->
+    <!-- ================================= -->
+    <div class="modal fade" id="loanModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <span class="bi bi-credit-card"></span> Кредитування
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Кредит — короткострокова позика з комісією</strong></p>
+                    <div class="alert alert-info">
+                        <strong>📌 Реалізація:</strong> <code>Services/WithdrawalService.cs</code> з <strong>Strategy Pattern</strong> для розрахунку комісій
+                    </div>
+
+                    <h6>Вхідні дані:</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Сума кредиту (₴)</label>
+                            <input type="number" class="form-control" @bind="loanAmount" placeholder="50000" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Період (місяців)</label>
+                            <input type="number" class="form-control" @bind="loanMonths" placeholder="12" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Тип трансферу</label>
+                            <select class="form-control" @bind="selectedStrategy">
+                                <option value="local">Локальний (0% комісія)</option>
+                                <option value="swift">SWIFT (5% + 50₴)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Відсоткова ставка (% р.р.)</label>
+                            <input type="number" class="form-control" value="12.5" readonly />
+                        </div>
+                    </div>
+
+                    <h6>Розрахунок комісії:</h6>
+                    @if (loanAmount > 0)
+                    {
+                        decimal commission = selectedStrategy == "swift" 
+                            ? (loanAmount * 0.05m + 50) 
+                            : 0;
+                        decimal monthlyPayment = (loanAmount + commission) / loanMonths;
+                        <div class="alert alert-primary">
+                            <strong>Сума кредиту:</strong> ₴@loanAmount.ToString("N0")<br />
+                            <strong>Комісія:</strong> ₴@commission.ToString("N2")<br />
+                            <strong>Щомісячний платіж:</strong> ₴@monthlyPayment.ToString("N2")<br />
+                            <strong>Всього за період:</strong> ₴@((monthlyPayment * loanMonths)).ToString("N2")
+                        </div>
+                    }
+
+                    <h6>Реалізація (Strategy Pattern):</h6>
+                    <div class="alert alert-light small">
+                        <code>ITransferStrategy strategy = selectedStrategy == "swift" </code><br />
+                        <code>&nbsp;&nbsp;&nbsp;&nbsp;? new SwiftTransferStrategy() </code><br />
+                        <code>&nbsp;&nbsp;&nbsp;&nbsp;: new LocalTransferStrategy();</code><br />
+                        <code>decimal fee = strategy.CalculateFee(loanAmount);</code>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                        Отримати кредит
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================= -->
+    <!-- МОДАЛЬ 3: ПЛАТІЖНА КАРТКА -->
+    <!-- ================================= -->
+    <div class="modal fade" id="cardModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">
+                        <span class="bi bi-credit-card-2-back"></span> Оформлення платіжної картки
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Платіжна картка зі спеціальними функціями</strong></p>
+                    <div class="alert alert-info">
+                        <strong>📌 Реалізація:</strong> <code>Decorators/CardDecorators.cs</code> (паттерн <strong>Decorator</strong>)
+                    </div>
+
+                    <h6>Виберіть функціональність:</h6>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" @bind="cardHasCashback" id="cashback" />
+                        <label class="form-check-label" for="cashback">
+                            💰 <strong>Cashback</strong> — 1-2% повернення на покупки
+                        </label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" @bind="cardHasPayPass" id="paypass" />
+                        <label class="form-check-label" for="paypass">
+                            📱 <strong>PayPass</strong> — NFC платежі до 1000₴ без PIN
+                        </label>
+                    </div>
+
+                    <h6>Збірка картки:</h6>
+                    @{
+                        string cardDescription = "📇 StandardCard";
+                        if (cardHasCashback) cardDescription += " + CashbackDecorator";
+                        if (cardHasPayPass) cardDescription += " + PayPassDecorator";
+                    }
+                    <div class="alert alert-success">
+                        <strong>Конфігурація:</strong><br />
+                        <code>@cardDescription</code>
+                    </div>
+
+                    <h6>Код (Decorator Pattern):</h6>
+                    <div class="alert alert-light small" style="overflow-x: auto;">
+                        <code>IBankCard card = new StandardCard();</code><br />
+                        @if (cardHasCashback)
+                        {
+                            <code>card = new CashbackDecorator(card);</code>
+                        }
+                        @if (cardHasPayPass)
+                        {
+                            <code>card = new PayPassDecorator(card);</code>
+                        }
+                        <br />
+                        <code>Console.WriteLine(card.GetDescription());</code>
+                    </div>
+
+                    <h6>Переваги Decorator Pattern:</h6>
+                    <ul>
+                        <li>✅ Гнучкість — змішуй функції як хочеш</li>
+                        <li>✅ Без підкласів — не потрібні StandardCardWithCashback, StandardCardWithPayPass тощо</li>
+                        <li>✅ Динамічність — додай функції в runtime</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                    <button type="button" class="btn btn-info" data-bs-dismiss="modal">
+                        Оформити картку
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================= -->
+    <!-- МОДАЛЬ 4: ТРАНСФЕР -->
+    <!-- ================================= -->
+    <div class="modal fade" id="transferModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">
+                        <span class="bi bi-arrow-left-right"></span> Гроші Трансфер
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Переказ грошей з розраховуванням комісій за стратегіями</strong></p>
+                    <div class="alert alert-info">
+                        <strong>📌 Реалізація:</strong> <code>Strategies/TransferStrategies.cs</code> (паттерн <strong>Strategy</strong>)
+                    </div>
+
+                    <h6>Деталі трансферу:</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">З рахунку (Іван Петренко)</label>
+                            <input type="text" class="form-control" value="UA2100000000..." readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">На рахунок</label>
+                            <input type="text" class="form-control" placeholder="UA2100000000..." @bind="transferRecipient" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Сума (₴)</label>
+                            <input type="number" class="form-control" @bind="transferAmount" placeholder="10000" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Тип трансферу</label>
+                            <select class="form-control" @bind="transferType">
+                                <option value="local">Локальний (0% комісія)</option>
+                                <option value="swift">SWIFT Міжнародний (5% + 50₴)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h6>Розрахунок комісії:</h6>
+                    @if (transferAmount > 0)
+                    {
+                        decimal transferFee = transferType == "swift" 
+                            ? (transferAmount * 0.05m + 50) 
+                            : 0;
+                        <div class="alert alert-warning">
+                            <strong>Сума переказу:</strong> ₴@transferAmount.ToString("N0")<br />
+                            <strong>Комісія (Strategy):</strong> ₴@transferFee.ToString("N2")<br />
+                            <strong>До одержувача:</strong> ₴@(transferAmount - transferFee).ToString("N2")
+                        </div>
+                    }
+
+                    <h6>Strategy Pattern — Обрана стратегія:</h6>
+                    <div class="alert alert-light small">
+                        @if (transferType == "local")
+                        {
+                            <code><strong>LocalTransferStrategy</strong></code><br />
+                            <code>public decimal CalculateFee(decimal amount) => 0;</code>
+                        }
+                        else
+                        {
+                            <code><strong>SwiftTransferStrategy</strong></code><br />
+                            <code>public decimal CalculateFee(decimal amount) => (amount * 0.05m) + 50;</code>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                    <button type="button" class="btn btn-warning" data-bs-dismiss="modal">
+                        Відправити трансфер
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="row mb-5">
+        <div class="col-md-12 mb-4">
+            <h2 class="display-6 fw-bold">
+                <span class="badge bg-success">🏗️ Реалізовані паттерни проектування</span>
+            </h2>
+        </div>
+
+        <div class="col-md-12">
+            <div class="accordion accordion-flush" id="patternAccordion">
+                <!-- 1. STRATEGY -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingStrategy">
+                        <button class="accordion-button fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStrategy" aria-expanded="true" aria-controls="collapseStrategy">
+                            <span class="badge bg-info me-3">Strategy</span>
+                            Динамічні алгоритми розрахунку комісій за перекази
+                        </button>
+                    </h2>
+                    <div id="collapseStrategy" class="accordion-collapse collapse show" aria-labelledby="headingStrategy" data-bs-parent="#patternAccordion">
+                        <div class="accordion-body">
+                            <p><strong>📍 Файл:</strong> <code>Strategies/TransferStrategies.cs</code></p>
+                            <p><strong>Опис:</strong></p>
+                            <ul>
+                                <li><strong>LocalTransferStrategy</strong> — Внутрішні перекази без комісії</li>
+                                <li><strong>SwiftTransferStrategy</strong> — Міжнародні SWIFT-перекази з комісією 5% + 50 UAH</li>
+                            </ul>
+                            <p class="text-muted"><strong>Користь:</strong> Легко додати нові алгоритми (наприклад, CryptoTransferStrategy) без зміни основного коду. Стратегія вибирається런-тайм.</p>
+                            <div class="alert alert-light">
+                                <code>ITransferStrategy strategy = new SwiftTransferStrategy();</code><br />
+                                <code>decimal fee = strategy.CalculateFee(amount);</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. OBSERVER -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingObserver">
+                        <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseObserver" aria-expanded="false" aria-controls="collapseObserver">
+                            <span class="badge bg-warning me-3">Observer</span>
+                            Система подій та сповіщень про транзакції
+                        </button>
+                    </h2>
+                    <div id="collapseObserver" class="accordion-collapse collapse" aria-labelledby="headingObserver" data-bs-parent="#patternAccordion">
+                        <div class="accordion-body">
+                            <p><strong>📍 Файли:</strong> <code>Events/TransactionEventArgs.cs</code>, <code>Events/Subscribers.cs</code></p>
+                            <p><strong>Опис:</strong></p>
+                            <ul>
+                                <li><strong>AuditLogger</strong> — Логує всі транзакції для аудиту</li>
+                                <li><strong>UserNotifier</strong> — Надсилає SMS-сповіщення користувачам</li>
+                            </ul>
+                            <p class="text-muted"><strong>Користь:</strong> При транзакції можна підписати нові слухачі без змін до класу Account. Нова функціональність (наприклад, EmailNotifier) додається за 5 хвилин.</p>
+                            <div class="alert alert-light">
+                                <code>account.OnTransactionCompleted += auditLogger.LogTransaction;</code><br />
+                                <code>account.OnTransactionCompleted += userNotifier.SendSmsAlert;</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. FACTORY -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingFactory">
+                        <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFactory" aria-expanded="false" aria-controls="collapseFactory">
+                            <span class="badge bg-primary me-3">Factory</span>
+                            Створення різних типів банківських рахунків
+                        </button>
+                    </h2>
+                    <div id="collapseFactory" class="accordion-collapse collapse" aria-labelledby="headingFactory" data-bs-parent="#patternAccordion">
+                        <div class="accordion-body">
+                            <p><strong>📍 Файл:</strong> <code>Factories/AccountFactory.cs</code></p>
+                            <p><strong>Опис:</strong></p>
+                            <ul>
+                                <li><strong>CheckingAccount</strong> — Поточний рахунок</li>
+                                <li><strong>Deposit</strong> — Депозит з автоматичним нарахуванням відсотків</li>
+                            </ul>
+                            <p class="text-muted"><strong>Користь:</strong> Сховує логіку ініціалізації. Клієнтський код викликає <code>AccountFactory.CreateAccount("deposit", ...)</code> замість того, щоб знати деталі конструкторів.</p>
+                            <div class="alert alert-light">
+                                <code>var account = AccountFactory.CreateAccount("checking", "Іван", 50000);</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. SINGLETON -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingSingleton">
+                        <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSingleton" aria-expanded="false" aria-controls="collapseSingleton">
+                            <span class="badge bg-secondary me-3">Singleton</span>
+                            Єдина конфігурація Центрального Банку
+                        </button>
+                    </h2>
+                    <div id="collapseSingleton" class="accordion-collapse collapse" aria-labelledby="headingSingleton" data-bs-parent="#patternAccordion">
+                        <div class="accordion-body">
+                            <p><strong>📍 Файл:</strong> <code>Services/CentralBank.cs</code></p>
+                            <p><strong>Опис:</strong></p>
+                            <p>
+                                <strong>CentralBank</strong> — потокобезпечний singleton за допомогою <code>Lazy&lt;CentralBank&gt;</code>.
+                                Гарантує, що в системі існує лише один екземпляр конфігурації банку.
+                            </p>
+                            <p class="text-muted"><strong>Користь:</strong> Глобальна конфігурація базової ставки відсотків, цінові константи. Змінюється один раз — впливає на весь банк.</p>
+                            <div class="alert alert-light">
+                                <code>var centralBank = CentralBank.Instance; // Завжди один екземпляр</code><br />
+                                <code>centralBank.UpdateInterestRate(4.5m);</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. COMPOSITE -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingComposite">
+                        <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseComposite" aria-expanded="false" aria-controls="collapseComposite">
+                            <span class="badge bg-danger me-3">Composite</span>
+                            Древовидна структура портфеля клієнта
+                        </button>
+                    </h2>
+                    <div id="collapseComposite" class="accordion-collapse collapse" aria-labelledby="headingComposite" data-bs-parent="#patternAccordion">
+                        <div class="accordion-body">
+                            <p><strong>📍 Файл:</strong> <code>Composites/Portfolio.cs</code></p>
+                            <p><strong>Опис:</strong></p>
+                            <ul>
+                                <li><strong>AccountLeaf</strong> — Один конкретний рахунок</li>
+                                <li><strong>AccountGroup</strong> — Група рахунків (може містити підгрупи)</li>
+                            </ul>
+                            <p class="text-muted"><strong>Користь:</strong> Клієнт може мати ієрархію портфелів: "Мої активи" → "Фіатні рахунки" → ["Зарплатний", "Депозит"], "Крипто" → ["Bitcoin", "Ethereum"].</p>
+                            <div class="alert alert-light">
+                                <code>portfolio.Add(fiatGroup); portfolio.Add(cryptoGroup);</code><br />
+                                <code>decimal total = portfolio.GetTotalBalance(); // Рекурсивно</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. DECORATOR -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingDecorator">
+                        <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDecorator" aria-expanded="false" aria-controls="collapseDecorator">
+                            <span class="badge bg-success me-3">Decorator</span>
+                            Динамічна збірка функцій банківської картки
+                        </button>
+                    </h2>
+                    <div id="collapseDecorator" class="accordion-collapse collapse" aria-labelledby="headingDecorator" data-bs-parent="#patternAccordion">
+                        <div class="accordion-body">
+                            <p><strong>📍 Файл:</strong> <code>Decorators/CardDecorators.cs</code></p>
+                            <p><strong>Опис:</strong></p>
+                            <ul>
+                                <li><strong>StandardCard</strong> — Базова картка</li>
+                                <li><strong>CashbackDecorator</strong> — Додає кешбек</li>
+                                <li><strong>PayPassDecorator</strong> — Додає NFC платежі</li>
+                            </ul>
+                            <p class="text-muted"><strong>Користь:</strong> Замість підкласів (StandardWithCashback, StandardWithNFC, StandardWithCashbackAndNFC...) використовуємо компоновані декоратори.</p>
+                            <div class="alert alert-light">
+                                <code>IBankCard card = new StandardCard();</code><br />
+                                <code>card = new CashbackDecorator(card);</code><br />
+                                <code>card = new PayPassDecorator(card);</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. SOLID -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingSOLID">
+                        <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSOLID" aria-expanded="false" aria-controls="collapseSOLID">
+                            <span class="badge bg-info me-3">SOLID</span>
+                            Принципи розроблення та архітектури
+                        </button>
+                    </h2>
+                    <div id="collapseSOLID" class="accordion-collapse collapse" aria-labelledby="headingSOLID" data-bs-parent="#patternAccordion">
+                        <div class="accordion-body">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>S</strong> (Single Responsibility)</td>
+                                    <td>
+                                        <strong>JsonStorageService</strong> — лише I/O з JSON<br />
+                                        <strong>CustomerService</strong> — лише бізнес-логіка<br />
+                                        <strong>CentralBank</strong> — лише конфігурація
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>O</strong> (Open/Closed)</td>
+                                    <td>
+                                        Нові стратегії трансферу можуть бути додані без зміни existing коду<br />
+                                        Нові декоратори карток додаються без змін StandardCard
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>L</strong> (Liskov Substitution)</td>
+                                    <td>
+                                        Account → CheckingAccount, Deposit можуть замінити один одного<br />
+                                        ITransferStrategy → LocalTransferStrategy, SwiftTransferStrategy
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>I</strong> (Interface Segregation)</td>
+                                    <td>
+                                        <strong>ITransferStrategy</strong> — мікроскопічний інтерфейс<br />
+                                        <strong>IPortfolioComponent</strong> — мінімум методів<br />
+                                        <strong>IWithdrawalNotificationService</strong> — тільки SMS
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>D</strong> (Dependency Inversion)</td>
+                                    <td>
+                                        Blazor Pages залежать від сервісів через DI<br />
+                                        WithdrawalService залежить від IWithdrawalNotificationService (інтерфейс), не конкретної реалізації
+                                    </td>
+                                </tr>
+                            </table>
+                            <p class="text-muted small mt-3">✅ Код легко тестувати, розширювати, підтримувати.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 8. DTO & REPOSITORY -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingDTO">
+                        <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDTO" aria-expanded="false" aria-controls="collapseDTO">
+                            <span class="badge bg-light text-dark me-3">DTO & Repository</span>
+                            Шари для передачі та зберігання даних
+                        </button>
+                    </h2>
+                    <div id="collapseDTO" class="accordion-collapse collapse" aria-labelledby="headingDTO" data-bs-parent="#patternAccordion">
+                        <div class="accordion-body">
+                            <p><strong>📍 Файли:</strong> <code>DTOs/CustomerDataStructures.cs</code>, <code>Repositories/AccountRepository.cs</code></p>
+                            <p><strong>Опис:</strong></p>
+                            <ul>
+                                <li>
+                                    <strong>DTO (Data Transfer Objects):</strong><br />
+                                    CustomerDto, AccountDto — чисті об'єкти для JSON серіалізації без циклічних посилань
+                                </li>
+                                <li>
+                                    <strong>Mapper:</strong><br />
+                                    Конвертує DomainCustomer ↔ CustomerDto (розділяє внутрішню модель від зовнішньої)
+                                </li>
+                                <li>
+                                    <strong>Repository Pattern:</strong><br />
+                                    AccountRepository&lt;T&gt; — узагальнена колекція з методами ForEach, Map, Filter
+                                </li>
+                            </ul>
+                            <p class="text-muted"><strong>Користь:</strong> Дані не витікають у JSON з циклічних посилань. UI отримує чисті, безпечні об'єкти.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================= -->
+    <!-- FOOTER -->
+    <!-- ================================= -->
+    <div class="row mt-5 pt-5 border-top">
+        <div class="col-md-12">
+            <p class="text-center text-muted">
+                <strong>Banking System Emulator</strong> • Реалізація 8+ паттернів проектування • SOLID принципи • Blazor Server<br />
+                <small>Проект розроблений для демонстрації архітектури та best practices C#</small>
+            </p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private SystemStatistics? statistics;
+
+    // Депозит
+    private decimal depositAmount = 100000;
+    private int depositDays = 365;
+
+    // Кредит
+    private decimal loanAmount = 50000;
+    private int loanMonths = 12;
+    private string selectedStrategy = "local";
+
+    // Картка
+    private bool cardHasCashback = true;
+    private bool cardHasPayPass = true;
+
+    // Трансфер
+    private decimal transferAmount = 10000;
+    private string transferRecipient = "";
+    private string transferType = "local";
+
+    protected override void OnInitialized()
+    {
+        LoadStatistics();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize Bootstrap modals after Blazor renders
+            await Task.Delay(100);
+        }
+    }
+
+    private void LoadStatistics()
+    {
+        var customers = CustomerService.GetAllCustomers();
+        
+        statistics = new SystemStatistics
+        {
+            CustomersCount = customers.Count,
+            TotalAccounts = customers.Sum(c => c.Accounts?.Count ?? 0),
+            TotalBalance = customers.Sum(c => c.Accounts?.Sum(a => a.Balance) ?? 0)
+        };
+    }
+
+    private class SystemStatistics
+    {
+        public int CustomersCount { get; set; }
+        public int TotalAccounts { get; set; }
+        public decimal TotalBalance { get; set; }
+    }
+}
+

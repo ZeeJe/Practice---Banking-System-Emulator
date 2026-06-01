@@ -1,0 +1,28 @@
+[
+  {
+    "FullName": "1323123",
+    "Accounts": [
+      {
+        "AccountId": "12312",
+        "Balance": 1231231
+      },
+      {
+        "AccountId": "12312",
+        "Balance": 1312312
+      },
+      {
+        "AccountId": "31321",
+        "Balance": 3131.05
+      }
+    ]
+  },
+  {
+    "FullName": "\u0422\u0435\u0441\u0442 \u041A\u043B\u0456\u0454\u043D\u0442",
+    "Accounts": [
+      {
+        "AccountId": "UA-TEST-001",
+        "Balance": 75000
+      }
+    ]
+  }
+]
